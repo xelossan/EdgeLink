@@ -45,5 +45,6 @@ winget install xelossan.EdgeLink -s edgelink
 winget upgrade xelossan.EdgeLink
 ```
 
-The package is a portable executable that needs the .NET 10 Desktop Runtime
-(`winget install Microsoft.DotNet.DesktopRuntime.10`). Close EdgeLink before upgrading it.
+The package is the per-user installer (`installer/EdgeLink.iss`). It needs the .NET 10 Desktop
+Runtime (`winget install Microsoft.DotNet.DesktopRuntime.10`). An upgrade stops a running EdgeLink
+and starts it again afterwards.

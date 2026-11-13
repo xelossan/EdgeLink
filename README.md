@@ -11,9 +11,11 @@ edge of another screen. An edge can carry any number of links.
 
 Download a build from [Releases](https://github.com/xelossan/EdgeLink/releases):
 
-- `EdgeLink-win-x64.exe` — a single file that needs nothing installed,
-- `EdgeLink-win-x64-needs-dotnet10.exe` — a small build for machines with the
+- `EdgeLink-setup-x64.exe` — installer: adds a Start menu shortcut and an uninstaller, installs
+  for the current user without administrator rights. Needs the
   [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+- `EdgeLink-win-x64.exe` — portable, a single file that needs nothing installed,
+- `EdgeLink-win-x64-needs-dotnet10.exe` — portable, small, needs the .NET 10 Desktop Runtime.
 
 Installing through winget from a self-hosted source is described in
 [deploy/winget-source](deploy/winget-source/README.md).

@@ -28,7 +28,14 @@ jobs:
         id: version
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF -like 'refs/tags/v*') { "args=-p:Version=$($env:GITHUB_REF_NAME.Substring(1))" >> $env:GITHUB_OUTPUT }
+          if ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+            "args=-p:Version=$version" >> $env:GITHUB_OUTPUT
+          }
+          else {
+            $version = (Select-Xml -Path src/EdgeLink/EdgeLink.csproj -XPath '//Version').Node.InnerText
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
 
       # one self-contained file that runs without .NET installed
       - name: Publish standalone
@@ -37,7 +44,7 @@ jobs:
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
           -p:DebugType=none -o out/standalone ${{ steps.version.outputs.args }}
 
-      # small single file for machines that already have the .NET 10 Desktop Runtime; winget installs this one
+      # small single file for machines that already have the .NET 10 Desktop Runtime; the installer carries this one
       - name: Publish framework-dependent
         run: >
           dotnet publish src/EdgeLink -c Release -r win-x64 --no-self-contained
@@ -50,13 +57,23 @@ jobs:
           Copy-Item out/standalone/EdgeLink.exe dist/EdgeLink-win-x64.exe
           Copy-Item out/runtime/EdgeLink.exe dist/EdgeLink-win-x64-needs-dotnet10.exe
 
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+            $iscc = Get-ChildItem "${env:ProgramFiles(x86)}\Inno Setup*\ISCC.exe", "$env:ProgramFiles\Inno Setup*\ISCC.exe" | Select-Object -First 1 -ExpandProperty FullName
+          }
+          & $iscc "/DAppVersion=${{ steps.version.outputs.version }}" "/DSourceExe=$PWD\out\runtime\EdgeLink.exe" "/DOutputDir=$PWD\dist" installer\EdgeLink.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       # attached to the release, from where the winget source fetches it (deploy/winget-source)
       - name: Write winget manifest
-        if: startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: >
-          deploy/winget-source/New-Manifest.ps1 -Version $env:GITHUB_REF_NAME.Substring(1)
-          -InstallerPath dist/EdgeLink-win-x64-needs-dotnet10.exe -OutFile dist/xelossan.EdgeLink.yaml
+          deploy/winget-source/New-Manifest.ps1 -Version ${{ steps.version.outputs.version }}
+          -InstallerPath dist/EdgeLink-setup-x64.exe -OutFile dist/xelossan.EdgeLink.yaml
 
       - uses: actions/upload-artifact@v7
         with:

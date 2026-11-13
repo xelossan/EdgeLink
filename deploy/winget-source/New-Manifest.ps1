@@ -23,11 +23,12 @@ ShortDescription: Custom cursor transitions between monitors on Windows 11.
 Moniker: edgelink
 Installers:
   - Architecture: x64
-    InstallerType: portable
+    InstallerType: inno
+    Scope: user
     InstallerUrl: https://github.com/xelossan/EdgeLink/releases/download/v$Version/$($installer.Name)
     InstallerSha256: $hash
-    Commands:
-      - EdgeLink
+    ProductCode: '{8ACFF77B-86C1-4453-88A4-A3848C6F47EE}_is1'
+    UpgradeBehavior: install
 ManifestType: singleton
 ManifestVersion: 1.6.0
 "@
