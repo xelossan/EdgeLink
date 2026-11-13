@@ -28,6 +28,9 @@
                         ToolTip="Wyświetla na każdym ekranie jego nazwę z EdgeLink" />
                 <Button Content="Odśwież" Margin="8,0,0,0" Click="Refresh_Click"
                         ToolTip="Ponownie odczytuje podłączone monitory" />
+                <CheckBox x:Name="PhysicalBox" Content="Rozmiary fizyczne" Margin="20,0,0,0" VerticalAlignment="Center"
+                          ToolTip="Rysuje monitory w ich rzeczywistych rozmiarach zamiast według liczby pikseli. Wpływa tylko na schemat."
+                          Click="PhysicalBox_Click" />
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal">

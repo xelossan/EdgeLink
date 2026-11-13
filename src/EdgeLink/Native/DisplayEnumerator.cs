@@ -166,52 +166,103 @@ internal static class DisplayEnumerator {
             var devicePath = hasTarget ? target.monitorDevicePath ?? "" : "";
             var edidValid = hasTarget && (target.flags & EdidIdsValid) != 0;
 
+            var edid = edidValid ? ReadEdid(devicePath) : null;
+            var (widthMm, heightMm) = EdidSize(edid);
+
             result.Add(new DetectedMonitor(new MonitorFingerprint {
                 DevicePath = devicePath,
                 FriendlyName = hasTarget ? target.monitorFriendlyDeviceName ?? "" : "",
                 AdapterPath = hasAdapter ? adapter.adapterDevicePath ?? "" : "",
                 EdidManufacturer = edidValid ? target.edidManufactureId : 0,
                 EdidProduct = edidValid ? target.edidProductCodeId : 0,
-                Serial = edidValid ? ReadEdidSerial(devicePath) : "",
+                Serial = EdidSerial(edid),
                 X = mode.sourceX,
                 Y = mode.sourceY,
                 Width = (int) mode.sourceWidth,
                 Height = (int) mode.sourceHeight
-            }));
+            }) {
+                EdidWidthMm = widthMm,
+                EdidHeightMm = heightMm,
+                Dpi = ReadDpi(mode.sourceX + (int) mode.sourceWidth / 2, mode.sourceY + (int) mode.sourceHeight / 2)
+            });
         }
 
         return result;
     }
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromPoint(NativeMethods.POINT point, uint flags);
+
+    [DllImport("shcore.dll")]
+    private static extern int GetDpiForMonitor(IntPtr monitor, int dpiType, out uint dpiX, out uint dpiY);
+
+    /// <summary>The effective DPI (96 × scaling) of the monitor containing the given physical point.</summary>
+    private static int ReadDpi(int x, int y)
+    {
+        try {
+            const uint MONITOR_DEFAULTTONULL = 0;
+            const int MDT_EFFECTIVE_DPI = 0;
+
+            var monitor = MonitorFromPoint(new NativeMethods.POINT { X = x, Y = y }, MONITOR_DEFAULTTONULL);
+            return monitor != IntPtr.Zero && GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, out var dpi, out _) == 0 && dpi > 0 ? (int) dpi : 96;
+        }
+        catch (Exception) {
+            return 96;
+        }
+    }
+
     /// <summary>
-    /// Reads the serial number from the EDID block Windows caches in the registry for the monitor.
+    /// Reads the EDID block Windows caches in the registry for the monitor.
     /// A device path looks like \\?\DISPLAY#PHLC247#5&amp;6abf803&amp;1&amp;UID264#{guid}.
     /// </summary>
-    private static string ReadEdidSerial(string devicePath)
+    private static byte[]? ReadEdid(string devicePath)
     {
         try {
             var parts = devicePath.Split('#');
-            if (parts.Length < 3) return "";
+            if (parts.Length < 3) return null;
 
             using var key = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Enum\DISPLAY\{parts[1]}\{parts[2]}\Device Parameters");
-            if (key?.GetValue("EDID") is not byte[] edid || edid.Length < 128) return "";
-
-            // a display descriptor tagged 0xFF carries the serial as text
-            for (var offset = 54; offset <= 108; offset += 18) {
-                if (edid[offset] != 0 || edid[offset + 1] != 0 || edid[offset + 2] != 0 || edid[offset + 3] != 0xFF) continue;
-
-                var text = Encoding.ASCII.GetString(edid, offset + 5, 13);
-                var end = text.IndexOf('\n');
-                text = (end >= 0 ? text[..end] : text).Trim(' ', '\0');
-                if (text.Length > 0) return text;
-            }
-
-            // 0 and 0x01010101 are what manufacturers write when they do not set a serial
-            var number = BitConverter.ToUInt32(edid, 12);
-            return number is 0 or 0x01010101 ? "" : number.ToString();
+            return key?.GetValue("EDID") is byte[] { Length: >= 128 } edid ? edid : null;
         }
         catch (Exception) {
-            return "";
+            return null;
         }
+    }
+
+    private static string EdidSerial(byte[]? edid)
+    {
+        if (edid == null) return "";
+
+        // a display descriptor tagged 0xFF carries the serial as text
+        for (var offset = 54; offset <= 108; offset += 18) {
+            if (edid[offset] != 0 || edid[offset + 1] != 0 || edid[offset + 2] != 0 || edid[offset + 3] != 0xFF) continue;
+
+            var text = Encoding.ASCII.GetString(edid, offset + 5, 13);
+            var end = text.IndexOf('\n');
+            text = (end >= 0 ? text[..end] : text).Trim(' ', '\0');
+            if (text.Length > 0) return text;
+        }
+
+        // 0 and 0x01010101 are what manufacturers write when they do not set a serial
+        var number = BitConverter.ToUInt32(edid, 12);
+        return number is 0 or 0x01010101 ? "" : number.ToString();
+    }
+
+    /// <summary>
+    /// The panel size in millimetres: from the preferred timing descriptor when it has one, which
+    /// is exact, otherwise from the basic block, which is rounded to centimetres.
+    /// </summary>
+    private static (int Width, int Height) EdidSize(byte[]? edid)
+    {
+        if (edid == null) return (0, 0);
+
+        // a descriptor with a non-zero pixel clock is a detailed timing; the first is the preferred mode
+        if (edid[54] != 0 || edid[55] != 0) {
+            var width = edid[54 + 12] | ((edid[54 + 14] >> 4) << 8);
+            var height = edid[54 + 13] | ((edid[54 + 14] & 0x0F) << 8);
+            if (width > 0 && height > 0) return (width, height);
+        }
+
+        return (edid[21] * 10, edid[22] * 10);
     }
 }

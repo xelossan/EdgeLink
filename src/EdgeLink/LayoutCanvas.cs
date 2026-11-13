@@ -10,7 +10,7 @@ using Microsoft.Win32;
 namespace EdgeLink;
 
 /// <summary>
-/// Draws the connected monitors as Windows arranges them, with every link shown as a pair of
+/// Draws the connected monitors, by pixel count or at their physical sizes, with every link shown as a pair of
 /// coloured spans joined by a curve, and lets the user create and reshape links by dragging.
 /// </summary>
 internal sealed class LayoutCanvas : FrameworkElement {
@@ -36,7 +36,8 @@ internal sealed class LayoutCanvas : FrameworkElement {
     private readonly record struct EdgeHit(OnlineMonitor Monitor, Edge Edge, double Fraction);
 
     private AppController? _controller;
-    private PixelRect _union;
+    private readonly Dictionary<Guid, RectD> _layout = []; // where each monitor sits, in pixels or millimetres
+    private RectD _union;
     private double _scale;
     private Point _origin;
 
@@ -91,9 +92,18 @@ internal sealed class LayoutCanvas : FrameworkElement {
         if (_controller == null || _controller.Online.Count == 0) return false;
 
         var online = _controller.Online;
-        var left = online.Min(o => o.Bounds.X);
-        var top = online.Min(o => o.Bounds.Y);
-        _union = new PixelRect(left, top, online.Max(o => o.Bounds.Right) - left, online.Max(o => o.Bounds.Bottom) - top);
+        _layout.Clear();
+        if (_controller.Config.Settings.PhysicalLayout) {
+            var arranged = PhysicalLayout.Arrange(online.Select(o => (o.Bounds, PhysicalLayout.Estimate(o.Profile, o.Detected))).ToList());
+            for (var i = 0; i < online.Count; i++) _layout[online[i].Profile.Id] = arranged[i];
+        }
+        else {
+            foreach (var o in online) _layout[o.Profile.Id] = new RectD(o.Bounds.X, o.Bounds.Y, o.Bounds.Width, o.Bounds.Height);
+        }
+
+        var left = _layout.Values.Min(r => r.X);
+        var top = _layout.Values.Min(r => r.Y);
+        _union = new RectD(left, top, _layout.Values.Max(r => r.Right) - left, _layout.Values.Max(r => r.Bottom) - top);
 
         _scale = Math.Min((ActualWidth - 2 * Padding) / _union.Width, (ActualHeight - 2 * Padding) / _union.Height);
         if (!(_scale > 0)) return false;
@@ -102,11 +112,17 @@ internal sealed class LayoutCanvas : FrameworkElement {
         return true;
     }
 
-    private Rect ViewRect(PixelRect bounds) => new(
-        _origin.X + (bounds.X - _union.X) * _scale + Gap,
-        _origin.Y + (bounds.Y - _union.Y) * _scale + Gap,
-        Math.Max(4, bounds.Width * _scale - 2 * Gap),
-        Math.Max(4, bounds.Height * _scale - 2 * Gap));
+    private Rect ViewRect(OnlineMonitor monitor)
+    {
+        // a monitor can appear between two layout passes; it is drawn from the next one on
+        if (!_layout.TryGetValue(monitor.Profile.Id, out var bounds)) return new Rect(-100, -100, 4, 4);
+
+        return new Rect(
+            _origin.X + (bounds.X - _union.X) * _scale + Gap,
+            _origin.Y + (bounds.Y - _union.Y) * _scale + Gap,
+            Math.Max(4, bounds.Width * _scale - 2 * Gap),
+            Math.Max(4, bounds.Height * _scale - 2 * Gap));
+    }
 
     private static Point EdgePoint(Rect r, Edge edge, double fraction) => edge switch {
         Edge.Left => new Point(r.Left, r.Top + fraction * r.Height),
@@ -151,7 +167,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         foreach (var link in _controller.Config.Links) {
             foreach (var end in link.Ends) {
                 var monitor = _controller.FindOnline(end.MonitorId);
-                if (monitor != null) yield return (link, end, monitor, ViewRect(monitor.Bounds));
+                if (monitor != null) yield return (link, end, monitor, ViewRect(monitor));
             }
         }
     }
@@ -190,7 +206,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         EdgeHit? best = null;
         var bestDistance = reach;
         foreach (var monitor in _controller.Online) {
-            var view = ViewRect(monitor.Bounds);
+            var view = ViewRect(monitor);
             foreach (var edge in Enum.GetValues<Edge>()) {
                 var distance = DistanceToEdge(view, edge, p);
                 if (distance > bestDistance) continue;
@@ -203,7 +219,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         return best;
     }
 
-    private OnlineMonitor? HitMonitor(Point p) => _controller?.Online.FirstOrDefault(o => ViewRect(o.Bounds).Contains(p));
+    private OnlineMonitor? HitMonitor(Point p) => _controller?.Online.FirstOrDefault(o => ViewRect(o).Contains(p));
 
     // ---------------------------------------------------------------- input
 
@@ -374,7 +390,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
     {
         if (_controller == null || _dragEnd is not { } end || _controller.FindOnline(end.MonitorId) is not { } monitor) return;
 
-        var view = ViewRect(monitor.Bounds);
+        var view = ViewRect(monitor);
         var length = monitor.Bounds.EdgeLength(end.Edge);
         var occupied = SpanMath.Occupied(_controller.Config, end.MonitorId, end.Edge, except: end);
         var (lo, hi) = SpanMath.FreeIntervalAt((end.Start + end.End) / 2, occupied) ?? (end.Start, end.End);
@@ -467,7 +483,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         var config = _controller.Config;
 
         foreach (var monitor in _controller.Online) {
-            var view = ViewRect(monitor.Bounds);
+            var view = ViewRect(monitor);
             var selected = ReferenceEquals(monitor.Profile, SelectedMonitor);
             dc.DrawRoundedRectangle(fill, selected ? selectedStroke : stroke, view, 6, 6);
 
@@ -479,7 +495,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         }
 
         if (_mode == DragMode.None && _hoverEdge is { } hover) {
-            var view = ViewRect(hover.Monitor.Bounds);
+            var view = ViewRect(hover.Monitor);
             dc.DrawLine(new Pen(new SolidColorBrush(Color.FromArgb(0x90, accent.R, accent.G, accent.B)), 3), EdgePoint(view, hover.Edge, 0), EdgePoint(view, hover.Edge, 1));
         }
 
@@ -489,8 +505,8 @@ internal sealed class LayoutCanvas : FrameworkElement {
 
             var color = ColorOf(config, link);
             var selected = ReferenceEquals(link, SelectedLink);
-            var from = EdgePoint(ViewRect(a.Bounds), link.A.Edge, (link.A.Start + link.A.End) / 2);
-            var to = EdgePoint(ViewRect(b.Bounds), link.B.Edge, (link.B.Start + link.B.End) / 2);
+            var from = EdgePoint(ViewRect(a), link.A.Edge, (link.A.Start + link.A.End) / 2);
+            var to = EdgePoint(ViewRect(b), link.B.Edge, (link.B.Start + link.B.End) / 2);
             var reach = Math.Clamp((to - from).Length / 2, 24, 110);
 
             var geometry = new StreamGeometry();
@@ -529,10 +545,10 @@ internal sealed class LayoutCanvas : FrameworkElement {
 
         if (_mode == DragMode.NewLink && _newFrom is { } start) {
             var pen = new Pen(new SolidColorBrush(accent), 2) { DashStyle = DashStyles.Dash };
-            dc.DrawLine(pen, EdgePoint(ViewRect(start.Monitor.Bounds), start.Edge, start.Fraction), _mouse);
+            dc.DrawLine(pen, EdgePoint(ViewRect(start.Monitor), start.Edge, start.Fraction), _mouse);
 
             if (HitEdge(_mouse, EdgeReach * 2) is { } target && !(target.Monitor == start.Monitor && target.Edge == start.Edge)) {
-                var view = ViewRect(target.Monitor.Bounds);
+                var view = ViewRect(target.Monitor);
                 dc.DrawLine(new Pen(new SolidColorBrush(accent), 4), EdgePoint(view, target.Edge, 0), EdgePoint(view, target.Edge, 1));
             }
         }

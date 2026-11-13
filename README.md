@@ -28,6 +28,10 @@ Aplikacja siedzi w zasobniku systemowym. Konfiguracja: `%APPDATA%\EdgeLink\confi
 - **Blokuj krawędzie poza połączeniami:** na monitorze, który ma choć jedno działające połączenie,
   kursor wychodzi tylko przez połączenia. Monitor bez połączeń zachowuje się jak w zwykłym Windows.
 
+- **Rozmiary fizyczne:** schemat rysuje monitory w rzeczywistych rozmiarach (z EDID, a gdy go brak —
+  szacowanych ze skalowania Windows). Tablety zwykle zgłaszają rozmiar błędnie albo wcale, więc po
+  kliknięciu monitora można wpisać jego przekątną w calach. Wpływa to tylko na rysunek.
+
 ## Rozpoznawanie monitorów
 
 Połączenia są przypięte do profilu monitora w EdgeLink, a nie do numeru czy nazwy z Windows.

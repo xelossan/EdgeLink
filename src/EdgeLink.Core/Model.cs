@@ -19,6 +19,9 @@ public sealed class AppSettings {
     /// everything else on its edges behaves like a wall.
     /// </summary>
     public bool BlockUnlinkedEdges { get; set; } = true;
+
+    /// <summary>Draw monitors on the schematic at their physical sizes instead of by pixel count.</summary>
+    public bool PhysicalLayout { get; set; } = true;
 }
 
 /// <summary>
@@ -29,6 +32,9 @@ public sealed class MonitorProfile {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Label { get; set; } = "";
     public MonitorFingerprint Fingerprint { get; set; } = new();
+
+    /// <summary>Screen diagonal typed in by the user; overrides whatever the monitor reports.</summary>
+    public double? DiagonalInches { get; set; }
 }
 
 /// <summary>Everything Windows tells us about a monitor that can help recognise it again.</summary>
@@ -56,6 +62,14 @@ public sealed record MonitorFingerprint {
 public sealed record DetectedMonitor(MonitorFingerprint Fingerprint) {
     public PixelRect Bounds => new(Fingerprint.X, Fingerprint.Y, Fingerprint.Width, Fingerprint.Height);
     public bool IsPrimary => Fingerprint is { X: 0, Y: 0 };
+
+    /// <summary>Panel size from EDID in millimetres, 0 when unknown. Often wrong on virtual displays.</summary>
+    public int EdidWidthMm { get; init; }
+
+    public int EdidHeightMm { get; init; }
+
+    /// <summary>Effective DPI, i.e. 96 × the Windows scaling factor.</summary>
+    public int Dpi { get; init; } = 96;
 }
 
 /// <summary>

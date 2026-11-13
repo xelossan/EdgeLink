@@ -78,6 +78,7 @@ public partial class MainWindow : Window {
         _syncing = true;
         EnabledBox.IsChecked = _controller.Config.Settings.Enabled;
         BlockBox.IsChecked = _controller.Config.Settings.BlockUnlinkedEdges;
+        PhysicalBox.IsChecked = _controller.Config.Settings.PhysicalLayout;
         _syncing = false;
 
         // the selection may refer to something that no longer exists
@@ -100,6 +101,14 @@ public partial class MainWindow : Window {
         if (_syncing) return;
 
         _controller.Config.Settings.BlockUnlinkedEdges = BlockBox.IsChecked == true;
+        _controller.Commit();
+    }
+
+    private void PhysicalBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (_syncing) return;
+
+        _controller.Config.Settings.PhysicalLayout = PhysicalBox.IsChecked == true;
         _controller.Commit();
     }
 
@@ -148,7 +157,7 @@ public partial class MainWindow : Window {
                 return;
             }
 
-            if (_labelBox?.IsKeyboardFocusWithin == true) return;
+            if (Keyboard.FocusedElement is TextBox focused && SidePanel.IsAncestorOf(focused)) return;
         }
 
         _panelSubject = subject;
@@ -233,6 +242,8 @@ public partial class MainWindow : Window {
                  + $"Stan: {(online != null ? "podłączony" : "odłączony")}\n"
                  + $"Identyfikacja: {identity}"));
 
+        AddSizeEditor(profile);
+
         var others = config.Monitors.Where(m => !ReferenceEquals(m, profile)).ToList();
         if (others.Count > 0) {
             Add(SubHeading("To nie ten monitor?"));
@@ -255,6 +266,78 @@ public partial class MainWindow : Window {
         Add(SubHeading("Połączenia tego monitora"));
         if (links.Count == 0) Add(Note("Brak. Przeciągnij od jego krawędzi do krawędzi innego monitora."));
         foreach (var link in links) Add(LinkRow(link));
+    }
+
+    /// <summary>Lets the user type the screen diagonal in, for monitors that misreport their size.</summary>
+    private void AddSizeEditor(MonitorProfile profile)
+    {
+        Add(SubHeading("Rozmiar fizyczny"));
+
+        var box = new TextBox { Width = 72, HorizontalContentAlignment = HorizontalAlignment.Right };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
+        row.Children.Add(new TextBlock { Text = "Przekątna", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        row.Children.Add(box);
+        row.Children.Add(new TextBlock { Text = "cali", VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, Margin = new Thickness(8, 0, 0, 0) });
+        Add(row);
+
+        var info = Note("");
+        Add(info);
+
+        void Show()
+        {
+            box.Text = profile.DiagonalInches?.ToString("0.#") ?? "";
+
+            if (_controller.FindOnline(profile.Id) is not { } online) {
+                info.Text = "Monitor odłączony — rozmiar zostanie ustalony, gdy wróci.";
+                return;
+            }
+
+            var size = PhysicalLayout.Estimate(profile, online.Detected);
+            var source = size.Source switch {
+                PhysicalSizeSource.Manual => "wpisana przekątna",
+                PhysicalSizeSource.Edid => "zgłoszony przez monitor (EDID)",
+                PhysicalSizeSource.EdidCorrected => "EDID z poprawką — monitor zgłasza proporcje niezgodne z rozdzielczością",
+                _ => $"szacunek ze skalowania Windows ({online.Detected.Dpi * 100 / 96}%)"
+            };
+            info.Text = $"{size.WidthMm / 10:0.#} × {size.HeightMm / 10:0.#} cm ({size.DiagonalInches:0.#}″) — {source}."
+                        + size.Source switch {
+                            PhysicalSizeSource.Manual => " Wyczyść pole, aby wrócić do odczytu automatycznego.",
+                            PhysicalSizeSource.Edid => " Wpisz przekątną, aby go nadpisać.",
+                            _ => " Wpisz przekątną, jeśli na schemacie wygląda nie tak."
+                        };
+        }
+
+        void Apply()
+        {
+            var text = box.Text.Trim().Replace("\"", "").Replace("″", "").Replace(',', '.');
+            if (text.Length == 0) {
+                profile.DiagonalInches = null;
+            }
+            else if (double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var inches)
+                     && inches is >= PhysicalLayout.MinDiagonalInches and <= PhysicalLayout.MaxDiagonalInches) {
+                profile.DiagonalInches = Math.Round(inches, 1);
+            }
+            else {
+                ShowMessage($"Przekątna musi być liczbą od {PhysicalLayout.MinDiagonalInches:0} do {PhysicalLayout.MaxDiagonalInches:0} cali.");
+            }
+
+            _controller.Commit();
+            Show();
+        }
+
+        box.LostKeyboardFocus += (_, _) => {
+            // skip the commit when nothing changed, so merely clicking away does not rewrite the config
+            if (box.Text.Trim() != (profile.DiagonalInches?.ToString("0.#") ?? "")) Apply();
+        };
+        box.KeyDown += (_, e) => {
+            if (e.Key != Key.Enter) return;
+
+            Apply();
+            box.SelectAll();
+            e.Handled = true;
+        };
+
+        Show();
     }
 
     private void BuildLinkPanel(Link link)
