@@ -1,0 +1,23 @@
+[Unit]
+Description=rewinged winget package source
+After=network.target
+
+[Service]
+User=rewinged
+Group=rewinged
+ExecStart=/usr/local/bin/rewinged -listen 127.0.0.1:8090 -manifestPath /var/lib/rewinged/manifests
+Restart=on-failure
+RestartSec=5
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+MemoryMax=150M
+
+[Install]
+WantedBy=multi-user.target

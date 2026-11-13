@@ -37,16 +37,26 @@ jobs:
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
           -p:DebugType=none -o out/standalone ${{ steps.version.outputs.args }}
 
-      # small build for machines that already have the .NET 10 Desktop Runtime
+      # small single file for machines that already have the .NET 10 Desktop Runtime; winget installs this one
       - name: Publish framework-dependent
-        run: dotnet publish src/EdgeLink -c Release -r win-x64 --no-self-contained -p:DebugType=none -o out/runtime ${{ steps.version.outputs.args }}
+        run: >
+          dotnet publish src/EdgeLink -c Release -r win-x64 --no-self-contained
+          -p:PublishSingleFile=true -p:DebugType=none -o out/runtime ${{ steps.version.outputs.args }}
 
       - name: Package
         shell: pwsh
         run: |
           New-Item -ItemType Directory dist | Out-Null
           Copy-Item out/standalone/EdgeLink.exe dist/EdgeLink-win-x64.exe
-          Compress-Archive out/runtime/* dist/EdgeLink-win-x64-needs-dotnet10.zip
+          Copy-Item out/runtime/EdgeLink.exe dist/EdgeLink-win-x64-needs-dotnet10.exe
+
+      # attached to the release, from where the winget source fetches it (deploy/winget-source)
+      - name: Write winget manifest
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: >
+          deploy/winget-source/New-Manifest.ps1 -Version $env:GITHUB_REF_NAME.Substring(1)
+          -InstallerPath dist/EdgeLink-win-x64-needs-dotnet10.exe -OutFile dist/xelossan.EdgeLink.yaml
 
       - uses: actions/upload-artifact@v7
         with:

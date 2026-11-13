@@ -1,0 +1,16 @@
+[Unit]
+Description=Fetch new EdgeLink winget manifests from GitHub releases
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=rewinged
+Group=rewinged
+ExecStart=/usr/local/bin/rewinged-sync
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/rewinged/manifests
