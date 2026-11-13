@@ -313,12 +313,12 @@ internal sealed class LayoutCanvas : FrameworkElement {
         Select(span.Link);
         var link = span.Link;
 
-        var reverse = new MenuItem { Header = "Odwróć kierunek mapowania", IsCheckable = true, IsChecked = link.Reversed };
+        var reverse = new MenuItem { Header = "Reverse mapping direction", IsCheckable = true, IsChecked = link.Reversed };
         reverse.Click += (_, _) => {
             link.Reversed = !link.Reversed;
             _controller.Commit();
         };
-        var delete = new MenuItem { Header = "Usuń połączenie", InputGestureText = "Delete" };
+        var delete = new MenuItem { Header = "Delete link", InputGestureText = "Delete" };
         delete.Click += (_, _) => DeleteSelected();
 
         ContextMenu = new ContextMenu { Items = { reverse, delete }, IsOpen = true };
@@ -425,7 +425,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         var a = SpanMath.Place(from.Fraction, (double) pixels / lengthA, SpanMath.Occupied(config, from.Monitor.Profile.Id, from.Edge));
         var b = SpanMath.Place(to.Fraction, (double) pixels / lengthB, SpanMath.Occupied(config, to.Monitor.Profile.Id, to.Edge));
         if (a == null || b == null) {
-            Message?.Invoke("W tym miejscu krawędzi jest już inne połączenie — zmniejsz je albo zacznij w wolnym miejscu.");
+            Message?.Invoke("Another link already occupies this part of the edge — shrink it or start in a free spot.");
             return;
         }
 
@@ -440,7 +440,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
             }
         };
         if (link.A.End <= link.A.Start || link.B.End <= link.B.Start) {
-            Message?.Invoke("Za mało wolnego miejsca na tej krawędzi.");
+            Message?.Invoke("Not enough free space on this edge.");
             return;
         }
 
@@ -476,7 +476,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
         var selectedStroke = new Pen(new SolidColorBrush(accent), 2);
 
         if (_controller == null || !UpdateView()) {
-            DrawText(dc, "Nie wykryto monitorów", 14, subtle, new Point(ActualWidth / 2, ActualHeight / 2), bold: false);
+            DrawText(dc, "No monitors detected", 14, subtle, new Point(ActualWidth / 2, ActualHeight / 2), bold: false);
             return;
         }
 
@@ -490,7 +490,7 @@ internal sealed class LayoutCanvas : FrameworkElement {
             dc.PushClip(new RectangleGeometry(view));
             var center = new Point(view.Left + view.Width / 2, view.Top + view.Height / 2);
             DrawText(dc, monitor.Profile.Label, 14, text, center - new Vector(0, 10), bold: true);
-            DrawText(dc, $"{monitor.Bounds.Width} × {monitor.Bounds.Height}{(monitor.Detected.IsPrimary ? " · główny" : "")}", 11, subtle, center + new Vector(0, 10), bold: false);
+            DrawText(dc, $"{monitor.Bounds.Width} × {monitor.Bounds.Height}{(monitor.Detected.IsPrimary ? " · primary" : "")}", 11, subtle, center + new Vector(0, 10), bold: false);
             dc.Pop();
         }
 

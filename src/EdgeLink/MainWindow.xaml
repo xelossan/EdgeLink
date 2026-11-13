@@ -21,28 +21,28 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Orientation="Horizontal">
-                <CheckBox x:Name="EnabledBox" Content="Włączony" VerticalAlignment="Center"
-                          ToolTip="Wstrzymuje i wznawia działanie EdgeLink (Ctrl+Alt+Shift+E)"
+                <CheckBox x:Name="EnabledBox" Content="Enabled" VerticalAlignment="Center"
+                          ToolTip="Pauses and resumes EdgeLink (Ctrl+Alt+Shift+E)"
                           Click="EnabledBox_Click" />
-                <Button Content="Pokaż, który to monitor" Margin="20,0,0,0" Click="Identify_Click"
-                        ToolTip="Wyświetla na każdym ekranie jego nazwę z EdgeLink" />
-                <Button Content="Odśwież" Margin="8,0,0,0" Click="Refresh_Click"
-                        ToolTip="Ponownie odczytuje podłączone monitory" />
-                <CheckBox x:Name="PhysicalBox" Content="Rozmiary fizyczne" Margin="20,0,0,0" VerticalAlignment="Center"
-                          ToolTip="Rysuje monitory w ich rzeczywistych rozmiarach zamiast według liczby pikseli. Wpływa tylko na schemat."
+                <Button Content="Identify monitors" Margin="20,0,0,0" Click="Identify_Click"
+                        ToolTip="Shows each screen's EdgeLink name on that screen" />
+                <Button Content="Refresh" Margin="8,0,0,0" Click="Refresh_Click"
+                        ToolTip="Re-reads the connected monitors" />
+                <CheckBox x:Name="PhysicalBox" Content="Physical sizes" Margin="20,0,0,0" VerticalAlignment="Center"
+                          ToolTip="Draws monitors at their real sizes instead of by pixel count. Affects the schematic only."
                           Click="PhysicalBox_Click" />
             </StackPanel>
 
             <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <CheckBox x:Name="BlockBox" Content="Blokuj krawędzie poza połączeniami" VerticalAlignment="Center"
-                          ToolTip="Na monitorze, który ma choć jedno połączenie, kursor przechodzi dalej tylko przez połączenia"
+                <CheckBox x:Name="BlockBox" Content="Block edges outside links" VerticalAlignment="Center"
+                          ToolTip="On a monitor that has at least one link, the cursor can leave only through links"
                           Click="BlockBox_Click" />
                 <TextBlock Text="Autostart" VerticalAlignment="Center" Margin="24,0,8,0" />
                 <ComboBox x:Name="AutostartBox" Width="200" SelectionChanged="AutostartBox_SelectionChanged">
-                    <ComboBoxItem Content="Wyłączony" />
-                    <ComboBoxItem Content="Włączony" />
-                    <ComboBoxItem Content="Jako administrator"
-                                  ToolTip="Potrzebne, aby EdgeLink działał także wtedy, gdy aktywne jest okno uruchomione jako administrator" />
+                    <ComboBoxItem Content="Off" />
+                    <ComboBoxItem Content="On" />
+                    <ComboBoxItem Content="As administrator"
+                                  ToolTip="Needed for EdgeLink to keep working while a window running as administrator is active" />
                 </ComboBox>
             </StackPanel>
         </Grid>

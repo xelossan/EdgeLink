@@ -54,13 +54,13 @@ public partial class MainWindow : Window {
 
     private string DefaultStatus()
     {
-        var text = "Przeciągnij od krawędzi jednego monitora do krawędzi drugiego, aby utworzyć połączenie. "
-                   + "Przesuwaj je i zmieniaj jego długość uchwytami; zmiany działają od razu.";
+        var text = "Drag from the edge of one monitor to the edge of another to create a link. "
+                   + "Move it and resize it with the handles; changes apply immediately.";
         text += _controller.HotkeyAvailable
-            ? $" Pauza: {AppController.HotkeyText}."
-            : $" Skrót pauzy {AppController.HotkeyText} jest zajęty przez inny program.";
+            ? $" Pause: {AppController.HotkeyText}."
+            : $" The pause shortcut {AppController.HotkeyText} is taken by another program.";
         if (!AppController.IsElevated) {
-            text += " EdgeLink działa bez uprawnień administratora, więc nie zadziała, gdy aktywne jest okno uruchomione jako administrator.";
+            text += " EdgeLink is running without administrator rights, so it will not work while a window running as administrator is active.";
         }
 
         return text;
@@ -140,7 +140,7 @@ public partial class MainWindow : Window {
         }
 
         _syncing = false;
-        ShowMessage("Nie udało się zmienić ustawienia autostartu.");
+        ShowMessage("Could not change the autostart setting.");
     }
 
     // ---------------------------------------------------------------- side panel
@@ -182,9 +182,9 @@ public partial class MainWindow : Window {
     {
         var config = _controller.Config;
 
-        Add(Heading("Połączenia"));
+        Add(Heading("Links"));
         if (config.Links.Count == 0) {
-            Add(Note("Nie ma jeszcze żadnych połączeń. Złap krawędź monitora na schemacie i przeciągnij do krawędzi innego monitora."));
+            Add(Note("There are no links yet. Grab a monitor edge on the schematic and drag it to an edge of another monitor."));
         }
         else {
             foreach (var link in config.Links) Add(LinkRow(link));
@@ -192,29 +192,29 @@ public partial class MainWindow : Window {
 
         var offline = _controller.OfflineProfiles.ToList();
         if (offline.Count > 0) {
-            Add(SubHeading("Odłączone monitory"));
-            Add(Note("Ich połączenia są zachowane i zaczną działać, gdy monitor wróci."));
+            Add(SubHeading("Disconnected monitors"));
+            Add(Note("Their links are kept and will work again when the monitor returns."));
 
             foreach (var profile in offline) {
                 var count = config.Links.Count(l => l.A.MonitorId == profile.Id || l.B.MonitorId == profile.Id);
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
 
-                var forget = new Button { Content = "Zapomnij", ToolTip = "Usuwa ten monitor razem z jego połączeniami" };
+                var forget = new Button { Content = "Forget", ToolTip = "Removes this monitor together with its links" };
                 forget.Click += (_, _) => _controller.RemoveProfile(profile);
                 DockPanel.SetDock(forget, Dock.Right);
                 row.Children.Add(forget);
 
                 row.Children.Add(new TextBlock {
-                    Text = $"{profile.Label} · {profile.Fingerprint.Width} × {profile.Fingerprint.Height} · połączeń: {count}",
+                    Text = $"{profile.Label} · {profile.Fingerprint.Width} × {profile.Fingerprint.Height} · links: {count}",
                     VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
                 });
                 Add(row);
             }
         }
 
-        Add(SubHeading("Jak to działa"));
-        Add(Note("Połączenie łączy fragment krawędzi jednego monitora z fragmentem krawędzi drugiego. Fragmenty mogą mieć różną długość — pozycja kursora jest przeliczana proporcjonalnie, więc mały odcinek może prowadzić na całą krawędź."));
-        Add(Note("Monitory nie muszą się stykać w ustawieniach Windows. Kliknij monitor, aby zmienić jego nazwę albo poprawić rozpoznanie."));
+        Add(SubHeading("How it works"));
+        Add(Note("A link joins a span of one monitor's edge with a span of another's. The spans may differ in length — the cursor position is mapped proportionally, so a short span can lead onto a whole edge."));
+        Add(Note("Monitors do not have to touch in Windows settings. Click a monitor to rename it or to correct how it was recognised."));
     }
 
     private void BuildMonitorPanel(MonitorProfile profile)
@@ -225,7 +225,7 @@ public partial class MainWindow : Window {
 
         Add(Heading("Monitor"));
 
-        Add(Caption("Nazwa w EdgeLink"));
+        Add(Caption("Name in EdgeLink"));
         _labelBox = new TextBox { Text = profile.Label, Margin = new Thickness(0, 0, 0, 12) };
         _labelBox.TextChanged += (_, _) => {
             profile.Label = _labelBox.Text;
@@ -234,24 +234,24 @@ public partial class MainWindow : Window {
         Add(_labelBox);
 
         var identity = fingerprint.HasEdid
-            ? fingerprint.Serial.Length > 0 ? "pewna (numer seryjny z EDID)" : "dobra (model z EDID i port)"
-            : "słaba — wyświetlacz wirtualny bez EDID, rozpoznawany po rozdzielczości i położeniu";
-        Add(Note($"Nazwa w Windows: {(fingerprint.FriendlyName.Length > 0 ? fingerprint.FriendlyName : "(brak)")}\n"
-                 + $"Rozdzielczość: {fingerprint.Width} × {fingerprint.Height} px\n"
-                 + $"Położenie w Windows: {fingerprint.X}, {fingerprint.Y}\n"
-                 + $"Stan: {(online != null ? "podłączony" : "odłączony")}\n"
-                 + $"Identyfikacja: {identity}"));
+            ? fingerprint.Serial.Length > 0 ? "certain (EDID serial number)" : "good (EDID model and port)"
+            : "weak — virtual display without EDID, recognised by resolution and position";
+        Add(Note($"Name in Windows: {(fingerprint.FriendlyName.Length > 0 ? fingerprint.FriendlyName : "(none)")}\n"
+                 + $"Resolution: {fingerprint.Width} × {fingerprint.Height} px\n"
+                 + $"Position in Windows: {fingerprint.X}, {fingerprint.Y}\n"
+                 + $"Status: {(online != null ? "connected" : "disconnected")}\n"
+                 + $"Identification: {identity}"));
 
         AddSizeEditor(profile);
 
         var others = config.Monitors.Where(m => !ReferenceEquals(m, profile)).ToList();
         if (others.Count > 0) {
-            Add(SubHeading("To nie ten monitor?"));
-            Add(Note("Jeśli EdgeLink pomylił dwa wyświetlacze (np. dwa tablety zgłaszające się tak samo), zamień je miejscami. Nazwy i połączenia zostają, zmienia się tylko to, który fizyczny ekran jest którym."));
+            Add(SubHeading("Not this monitor?"));
+            Add(Note("If EdgeLink mixed up two displays (e.g. two tablets that report themselves identically), swap them. Names and links stay; only which physical screen is which changes."));
 
             foreach (var other in others) {
                 var swap = new Button {
-                    Content = $"Zamień z: {other.Label}{(_controller.FindOnline(other.Id) == null ? " (odłączony)" : "")}",
+                    Content = $"Swap with: {other.Label}{(_controller.FindOnline(other.Id) == null ? " (disconnected)" : "")}",
                     HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 6)
                 };
                 swap.Click += (_, _) => {
@@ -263,21 +263,21 @@ public partial class MainWindow : Window {
         }
 
         var links = config.Links.Where(l => l.A.MonitorId == profile.Id || l.B.MonitorId == profile.Id).ToList();
-        Add(SubHeading("Połączenia tego monitora"));
-        if (links.Count == 0) Add(Note("Brak. Przeciągnij od jego krawędzi do krawędzi innego monitora."));
+        Add(SubHeading("Links of this monitor"));
+        if (links.Count == 0) Add(Note("None. Drag from one of its edges to an edge of another monitor."));
         foreach (var link in links) Add(LinkRow(link));
     }
 
     /// <summary>Lets the user type the screen diagonal in, for monitors that misreport their size.</summary>
     private void AddSizeEditor(MonitorProfile profile)
     {
-        Add(SubHeading("Rozmiar fizyczny"));
+        Add(SubHeading("Physical size"));
 
         var box = new TextBox { Width = 72, HorizontalContentAlignment = HorizontalAlignment.Right };
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-        row.Children.Add(new TextBlock { Text = "Przekątna", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        row.Children.Add(new TextBlock { Text = "Diagonal", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
         row.Children.Add(box);
-        row.Children.Add(new TextBlock { Text = "cali", VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, Margin = new Thickness(8, 0, 0, 0) });
+        row.Children.Add(new TextBlock { Text = "inches", VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, Margin = new Thickness(8, 0, 0, 0) });
         Add(row);
 
         var info = Note("");
@@ -288,22 +288,22 @@ public partial class MainWindow : Window {
             box.Text = profile.DiagonalInches?.ToString("0.#") ?? "";
 
             if (_controller.FindOnline(profile.Id) is not { } online) {
-                info.Text = "Monitor odłączony — rozmiar zostanie ustalony, gdy wróci.";
+                info.Text = "Monitor disconnected — its size will be worked out when it returns.";
                 return;
             }
 
             var size = PhysicalLayout.Estimate(profile, online.Detected);
             var source = size.Source switch {
-                PhysicalSizeSource.Manual => "wpisana przekątna",
-                PhysicalSizeSource.Edid => "zgłoszony przez monitor (EDID)",
-                PhysicalSizeSource.EdidCorrected => "EDID z poprawką — monitor zgłasza proporcje niezgodne z rozdzielczością",
-                _ => $"szacunek ze skalowania Windows ({online.Detected.Dpi * 100 / 96}%)"
+                PhysicalSizeSource.Manual => "entered diagonal",
+                PhysicalSizeSource.Edid => "reported by the monitor (EDID)",
+                PhysicalSizeSource.EdidCorrected => "corrected EDID — the monitor reports proportions that contradict its resolution",
+                _ => $"estimated from Windows scaling ({online.Detected.Dpi * 100 / 96}%)"
             };
             info.Text = $"{size.WidthMm / 10:0.#} × {size.HeightMm / 10:0.#} cm ({size.DiagonalInches:0.#}″) — {source}."
                         + size.Source switch {
-                            PhysicalSizeSource.Manual => " Wyczyść pole, aby wrócić do odczytu automatycznego.",
-                            PhysicalSizeSource.Edid => " Wpisz przekątną, aby go nadpisać.",
-                            _ => " Wpisz przekątną, jeśli na schemacie wygląda nie tak."
+                            PhysicalSizeSource.Manual => " Clear the field to return to automatic detection.",
+                            PhysicalSizeSource.Edid => " Enter the diagonal to override it.",
+                            _ => " Enter the diagonal if it looks wrong on the schematic."
                         };
         }
 
@@ -318,7 +318,7 @@ public partial class MainWindow : Window {
                 profile.DiagonalInches = Math.Round(inches, 1);
             }
             else {
-                ShowMessage($"Przekątna musi być liczbą od {PhysicalLayout.MinDiagonalInches:0} do {PhysicalLayout.MaxDiagonalInches:0} cali.");
+                ShowMessage($"The diagonal must be a number between {PhysicalLayout.MinDiagonalInches:0} and {PhysicalLayout.MaxDiagonalInches:0} inches.");
             }
 
             _controller.Commit();
@@ -344,7 +344,7 @@ public partial class MainWindow : Window {
     {
         var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 4) };
         header.Children.Add(Dot(link));
-        header.Children.Add(new TextBlock { Text = "Połączenie", FontSize = 16, FontWeight = FontWeights.SemiBold });
+        header.Children.Add(new TextBlock { Text = "Link", FontSize = 16, FontWeight = FontWeights.SemiBold });
         Add(header);
 
         AddEndEditor(link.A);
@@ -357,13 +357,13 @@ public partial class MainWindow : Window {
             var a = SpanPixels(link.A);
             var b = SpanPixels(link.B);
             ratio.Text = a > 0 && b > 0
-                ? $"{a} px ⇄ {b} px — 1 px po pierwszej stronie to {(double) b / a:0.##} px po drugiej."
-                : "Połączenie zacznie działać, gdy oba monitory będą podłączone.";
+                ? $"{a} px ⇄ {b} px — 1 px on the first side is {(double) b / a:0.##} px on the second."
+                : "The link will start working when both monitors are connected.";
         });
 
         var reversed = new CheckBox {
-            Content = "Odwróć kierunek mapowania",
-            ToolTip = "Początek pierwszego fragmentu prowadzi na koniec drugiego"
+            Content = "Reverse mapping direction",
+            ToolTip = "The start of the first span leads to the end of the second"
         };
         reversed.Click += (_, _) => {
             link.Reversed = reversed.IsChecked == true;
@@ -371,7 +371,7 @@ public partial class MainWindow : Window {
         };
         Add(reversed);
 
-        var enabled = new CheckBox { Content = "Aktywne" };
+        var enabled = new CheckBox { Content = "Active" };
         enabled.Click += (_, _) => {
             link.Enabled = enabled.IsChecked == true;
             _controller.Commit();
@@ -383,7 +383,7 @@ public partial class MainWindow : Window {
             enabled.IsChecked = link.Enabled;
         });
 
-        var delete = new Button { Content = "Usuń połączenie", Margin = new Thickness(0, 16, 0, 0) };
+        var delete = new Button { Content = "Delete link", Margin = new Thickness(0, 16, 0, 0) };
         delete.Click += (_, _) => {
             LayoutView.Select(null);
             _controller.DeleteLink(link);
@@ -404,7 +404,7 @@ public partial class MainWindow : Window {
         Add(SubHeading($"{profile?.Label ?? "?"} — {EdgeName(end.Edge)}"));
 
         if (_controller.FindOnline(end.MonitorId) == null) {
-            Add(Note("Monitor odłączony. Zakres będzie można zmienić, gdy wróci."));
+            Add(Note("Monitor disconnected. The range can be changed when it returns."));
             return;
         }
 
@@ -421,9 +421,9 @@ public partial class MainWindow : Window {
         var total = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Opacity = 0.75, Margin = new Thickness(8, 0, 0, 0) };
 
         var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };
-        row.Children.Add(new TextBlock { Text = "od", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
+        row.Children.Add(new TextBlock { Text = "from", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 8, 0) });
         row.Children.Add(startBox);
-        row.Children.Add(new TextBlock { Text = "do", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) });
+        row.Children.Add(new TextBlock { Text = "to", VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 8, 0) });
         row.Children.Add(endBox);
         row.Children.Add(total);
         Add(row);
@@ -433,7 +433,7 @@ public partial class MainWindow : Window {
             var length = Length();
             if (force || !startBox.IsKeyboardFocused) startBox.Text = Math.Round(end.Start * length).ToString("0");
             if (force || !endBox.IsKeyboardFocused) endBox.Text = Math.Round(end.End * length).ToString("0");
-            total.Text = $"z {length} px";
+            total.Text = $"of {length} px";
         }
 
         void Apply()
@@ -465,7 +465,7 @@ public partial class MainWindow : Window {
             };
         }
 
-        var stretch = new Button { Content = "Rozciągnij na całe wolne miejsce" };
+        var stretch = new Button { Content = "Stretch over all free space" };
         stretch.Click += (_, _) => {
             (end.Start, end.End) = Free();
             _controller.Commit();
@@ -501,7 +501,7 @@ public partial class MainWindow : Window {
         content.Children.Add(Dot(link));
         content.Children.Add(new TextBlock {
             Text = $"{config.FindMonitor(link.A.MonitorId)?.Label} {EdgeArrow(link.A.Edge)}  ⇄  {config.FindMonitor(link.B.MonitorId)?.Label} {EdgeArrow(link.B.Edge)}"
-                   + (waiting ? "  (czeka na monitor)" : !link.Enabled ? "  (wyłączone)" : ""),
+                   + (waiting ? "  (waiting for monitor)" : !link.Enabled ? "  (disabled)" : ""),
             TextTrimming = TextTrimming.CharacterEllipsis
         });
 
@@ -515,10 +515,10 @@ public partial class MainWindow : Window {
     }
 
     private static string EdgeName(Edge edge) => edge switch {
-        Edge.Left => "lewa krawędź",
-        Edge.Right => "prawa krawędź",
-        Edge.Top => "górna krawędź",
-        _ => "dolna krawędź"
+        Edge.Left => "left edge",
+        Edge.Right => "right edge",
+        Edge.Top => "top edge",
+        _ => "bottom edge"
     };
 
     private static string EdgeArrow(Edge edge) => edge switch {

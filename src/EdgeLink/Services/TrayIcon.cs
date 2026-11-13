@@ -24,13 +24,13 @@ internal sealed class TrayIcon : IDisposable {
     {
         _controller = controller;
 
-        var open = new MenuItem { Header = "Otwórz EdgeLink", FontWeight = FontWeights.SemiBold };
+        var open = new MenuItem { Header = "Open EdgeLink", FontWeight = FontWeights.SemiBold };
         open.Click += (_, _) => showWindow();
 
-        _enabledItem = new MenuItem { Header = "Włączony", IsCheckable = true, InputGestureText = AppController.HotkeyText };
+        _enabledItem = new MenuItem { Header = "Enabled", IsCheckable = true, InputGestureText = AppController.HotkeyText };
         _enabledItem.Click += (_, _) => controller.SetEnabled(_enabledItem.IsChecked);
 
-        var quit = new MenuItem { Header = "Zakończ" };
+        var quit = new MenuItem { Header = "Exit" };
         quit.Click += (_, _) => exit();
 
         _menu = new ContextMenu { Placement = PlacementMode.MousePoint, Items = { open, _enabledItem, new Separator(), quit } };
@@ -58,7 +58,7 @@ internal sealed class TrayIcon : IDisposable {
     {
         var enabled = _controller.Config.Settings.Enabled;
         _enabledItem.IsChecked = enabled;
-        _icon.Text = enabled ? "EdgeLink" : "EdgeLink (wstrzymany)";
+        _icon.Text = enabled ? "EdgeLink" : "EdgeLink (paused)";
     }
 
     public void Dispose()
