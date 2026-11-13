@@ -1,0 +1,72 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test
+        run: dotnet test -c Release
+
+      # a tag v1.2.3 builds version 1.2.3; anything else keeps the version from the project file
+      - name: Pick version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -like 'refs/tags/v*') { "args=-p:Version=$($env:GITHUB_REF_NAME.Substring(1))" >> $env:GITHUB_OUTPUT }
+
+      # one self-contained file that runs without .NET installed
+      - name: Publish standalone
+        run: >
+          dotnet publish src/EdgeLink -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none -o out/standalone ${{ steps.version.outputs.args }}
+
+      # small build for machines that already have the .NET 10 Desktop Runtime
+      - name: Publish framework-dependent
+        run: dotnet publish src/EdgeLink -c Release -r win-x64 --no-self-contained -p:DebugType=none -o out/runtime ${{ steps.version.outputs.args }}
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory dist | Out-Null
+          Copy-Item out/standalone/EdgeLink.exe dist/EdgeLink-win-x64.exe
+          Compress-Archive out/runtime/* dist/EdgeLink-win-x64-needs-dotnet10.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: EdgeLink
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: EdgeLink
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "EdgeLink $GITHUB_REF_NAME" --generate-notes
