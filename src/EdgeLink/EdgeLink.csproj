@@ -14,7 +14,7 @@
     <!-- DPI awareness is declared in app.manifest so that it is in effect before any window or hook exists -->
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
 
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Product>EdgeLink</Product>
     <Description>Custom cursor passages between monitor edges.</Description>
   </PropertyGroup>
