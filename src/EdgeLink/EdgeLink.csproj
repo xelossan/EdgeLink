@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- Windows Forms is used only for the tray icon -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\EdgeLink.ico</ApplicationIcon>
+    <!-- DPI awareness is declared in app.manifest so that it is in effect before any window or hook exists -->
+    <NoWarn>$(NoWarn);WFO0003</NoWarn>
+
+    <Version>0.1.0</Version>
+    <Product>EdgeLink</Product>
+    <Description>Custom cursor passages between monitor edges.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Resource Include="Assets\EdgeLink.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\EdgeLink.Core\EdgeLink.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EdgeLink.Core/EdgeLink.Core.csproj" />
+    <Project Path="src/EdgeLink/EdgeLink.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/EdgeLink.Tests/EdgeLink.Tests.csproj" />
+  </Folder>
+</Solution>

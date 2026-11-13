@@ -1,0 +1,71 @@
+<Window x:Class="EdgeLink.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:EdgeLink"
+        Title="EdgeLink"
+        Icon="Assets/EdgeLink.ico"
+        Width="1200" Height="740" MinWidth="900" MinHeight="540"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="16,12,16,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="EnabledBox" Content="Włączony" VerticalAlignment="Center"
+                          ToolTip="Wstrzymuje i wznawia działanie EdgeLink (Ctrl+Alt+Shift+E)"
+                          Click="EnabledBox_Click" />
+                <Button Content="Pokaż, który to monitor" Margin="20,0,0,0" Click="Identify_Click"
+                        ToolTip="Wyświetla na każdym ekranie jego nazwę z EdgeLink" />
+                <Button Content="Odśwież" Margin="8,0,0,0" Click="Refresh_Click"
+                        ToolTip="Ponownie odczytuje podłączone monitory" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <CheckBox x:Name="BlockBox" Content="Blokuj krawędzie poza połączeniami" VerticalAlignment="Center"
+                          ToolTip="Na monitorze, który ma choć jedno połączenie, kursor przechodzi dalej tylko przez połączenia"
+                          Click="BlockBox_Click" />
+                <TextBlock Text="Autostart" VerticalAlignment="Center" Margin="24,0,8,0" />
+                <ComboBox x:Name="AutostartBox" Width="200" SelectionChanged="AutostartBox_SelectionChanged">
+                    <ComboBoxItem Content="Wyłączony" />
+                    <ComboBoxItem Content="Włączony" />
+                    <ComboBoxItem Content="Jako administrator"
+                                  ToolTip="Potrzebne, aby EdgeLink działał także wtedy, gdy aktywne jest okno uruchomione jako administrator" />
+                </ComboBox>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="16,0,16,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="330" />
+            </Grid.ColumnDefinitions>
+
+            <Border CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <local:LayoutCanvas x:Name="LayoutView" />
+            </Border>
+
+            <Border Grid.Column="2" CornerRadius="8" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource CardBackgroundFillColorDefaultBrush}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="SidePanel" Margin="16" />
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <TextBlock x:Name="StatusText" Grid.Row="2" Margin="18,10,18,12" Opacity="0.75" TextWrapping="Wrap" />
+    </Grid>
+</Window>
