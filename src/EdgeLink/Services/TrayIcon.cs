@@ -33,7 +33,9 @@ internal sealed class TrayIcon : IDisposable {
         var quit = new MenuItem { Header = "Exit" };
         quit.Click += (_, _) => exit();
 
-        _menu = new ContextMenu { Placement = PlacementMode.MousePoint, Items = { open, _enabledItem, new Separator(), quit } };
+        var version = new MenuItem { Header = $"Version {AppController.Version}", IsEnabled = false };
+
+        _menu = new ContextMenu { Placement = PlacementMode.MousePoint, Items = { open, _enabledItem, new Separator(), version, quit } };
         _menu.Opened += (_, _) => {
             // a popup of a background application does not close when the user clicks elsewhere
             // unless its window is the foreground one
@@ -58,7 +60,7 @@ internal sealed class TrayIcon : IDisposable {
     {
         var enabled = _controller.Config.Settings.Enabled;
         _enabledItem.IsChecked = enabled;
-        _icon.Text = enabled ? "EdgeLink" : "EdgeLink (paused)";
+        _icon.Text = $"EdgeLink {AppController.Version}{(enabled ? "" : " (paused)")}";
     }
 
     public void Dispose()

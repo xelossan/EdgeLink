@@ -14,6 +14,13 @@ namespace EdgeLink.Services;
 internal sealed class AppController : IDisposable {
     public const string HotkeyText = "Ctrl+Alt+Shift+E";
 
+    /// <summary>The version of the running build, without the commit suffix the SDK appends.</summary>
+    public static readonly string Version =
+        (System.Reflection.Assembly.GetExecutingAssembly()
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()?.InformationalVersion ?? "").Split('+')[0];
+
     public static readonly string DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EdgeLink");
 
     private readonly ConfigStore _store = new(Path.Combine(DataDirectory, "config.json"));

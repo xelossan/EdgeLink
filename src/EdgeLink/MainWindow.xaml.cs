@@ -21,6 +21,7 @@ public partial class MainWindow : Window {
     {
         _controller = controller;
         InitializeComponent();
+        Title = $"EdgeLink {AppController.Version}";
 
         LayoutView.Controller = controller;
         LayoutView.SelectionChanged += RefreshPanel;
