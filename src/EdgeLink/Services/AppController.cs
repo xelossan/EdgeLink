@@ -145,6 +145,16 @@ internal sealed class AppController : IDisposable {
         RefreshMonitors();
     }
 
+    /// <summary>Records that a newly seen profile is another connection of a known, disconnected screen.</summary>
+    public void Merge(MonitorProfile source, MonitorProfile target)
+    {
+        if (FindOnline(target.Id) != null) return; // both connected at once: they are two screens
+
+        MonitorMatcher.Merge(Config, source, target);
+        ScheduleSave();
+        RefreshMonitors();
+    }
+
     private void ScheduleSave()
     {
         _saveTimer.Stop();

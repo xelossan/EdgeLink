@@ -31,7 +31,17 @@ public sealed class AppSettings {
 public sealed class MonitorProfile {
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Label { get; set; } = "";
+    /// <summary>How the screen looked the last time it was connected.</summary>
     public MonitorFingerprint Fingerprint { get; set; } = new();
+
+    /// <summary>
+    /// Other ways the same physical screen has been connected, e.g. a tablet that is attached
+    /// sometimes through GlideX and sometimes through spacedesk. Any of them identifies the profile.
+    /// </summary>
+    public List<MonitorFingerprint> OtherFingerprints { get; set; } = [];
+
+    [JsonIgnore]
+    public IEnumerable<MonitorFingerprint> AllFingerprints => OtherFingerprints.Prepend(Fingerprint);
 
     /// <summary>Screen diagonal typed in by the user; overrides whatever the monitor reports.</summary>
     public double? DiagonalInches { get; set; }

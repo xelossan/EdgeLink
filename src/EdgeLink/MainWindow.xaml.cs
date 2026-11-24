@@ -241,9 +241,36 @@ public partial class MainWindow : Window {
                  + $"Resolution: {fingerprint.Width} × {fingerprint.Height} px\n"
                  + $"Position in Windows: {fingerprint.X}, {fingerprint.Y}\n"
                  + $"Status: {(online != null ? "connected" : "disconnected")}\n"
-                 + $"Identification: {identity}"));
+                 + $"Identification: {identity}"
+                 + (profile.OtherFingerprints.Count > 0 ? $"\nAlso recognised through {profile.OtherFingerprints.Count} other connection(s)" : "")));
 
         AddSizeEditor(profile);
+
+        // only a disconnected profile can be the same screen as this one
+        var mergeTargets = online == null ? [] : config.Monitors.Where(m => !ReferenceEquals(m, profile) && _controller.FindOnline(m.Id) == null).ToList();
+        if (mergeTargets.Count > 0) {
+            Add(SubHeading("Same screen as a known one?"));
+            Add(Note("If this is a screen EdgeLink already knows, connected another way (e.g. a tablet through spacedesk instead of GlideX), "
+                     + "merge it into that one. The screen then uses that name, size and links, and is recognised whichever way it is connected."));
+
+            foreach (var target in mergeTargets) {
+                var merge = new Button {
+                    Content = $"This is: {target.Label}",
+                    HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 6)
+                };
+                merge.Click += (_, _) => {
+                    var links = config.Links.Count(l => l.A.MonitorId == profile.Id || l.B.MonitorId == profile.Id);
+                    var message = $"This screen will use the name, size and links of \"{target.Label}\" and be recognised whichever way it is connected. "
+                                  + $"The \"{profile.Label}\" profile will be removed"
+                                  + (links > 0 ? $" and its {links} link(s) moved to \"{target.Label}\"." : ".");
+                    if (!ConfirmDialog.Ask(this, $"Is \"{profile.Label}\" the same screen as \"{target.Label}\"?", message, "Merge")) return;
+
+                    _controller.Merge(profile, target);
+                    LayoutView.Select(null, target);
+                };
+                Add(merge);
+            }
+        }
 
         var others = config.Monitors.Where(m => !ReferenceEquals(m, profile)).ToList();
         if (others.Count > 0) {

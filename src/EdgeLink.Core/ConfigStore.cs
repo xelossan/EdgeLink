@@ -54,6 +54,8 @@ public sealed class ConfigStore(string path) {
         config.Monitors.RemoveAll(m => m == null);
         foreach (var monitor in config.Monitors) {
             monitor.Fingerprint ??= new MonitorFingerprint();
+            monitor.OtherFingerprints ??= [];
+            monitor.OtherFingerprints.RemoveAll(f => f == null);
             monitor.Label ??= "";
         }
 

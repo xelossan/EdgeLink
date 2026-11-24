@@ -54,7 +54,7 @@ public static class MonitorMatcher {
         var pairs = new List<(int Score, int Profile, int Detected)>();
         for (var p = 0; p < config.Monitors.Count; p++) {
             for (var d = 0; d < detected.Count; d++) {
-                var score = Score(config.Monitors[p].Fingerprint, detected[d].Fingerprint);
+                var score = config.Monitors[p].AllFingerprints.Max(f => Score(f, detected[d].Fingerprint));
                 if (score >= Threshold) pairs.Add((score, p, d));
             }
         }
@@ -74,11 +74,28 @@ public static class MonitorMatcher {
                 config.Monitors.Add(profile);
             }
 
-            profile.Fingerprint = detected[d].Fingerprint;
+            UpdateFingerprint(profile, detected[d].Fingerprint);
             result.Add(new OnlineMonitor(profile, detected[d]));
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Makes the current fingerprint the profile's main one. When the screen came in through one of
+    /// its other connections, that entry is refreshed and the previous main one is kept as another.
+    /// </summary>
+    private static void UpdateFingerprint(MonitorProfile profile, MonitorFingerprint current)
+    {
+        var best = -1;
+        var bestScore = Score(profile.Fingerprint, current);
+        for (var i = 0; i < profile.OtherFingerprints.Count; i++) {
+            var score = Score(profile.OtherFingerprints[i], current);
+            if (score > bestScore) (best, bestScore) = (i, score);
+        }
+
+        if (best >= 0) profile.OtherFingerprints[best] = profile.Fingerprint;
+        profile.Fingerprint = current;
     }
 
     /// <summary>
@@ -88,6 +105,34 @@ public static class MonitorMatcher {
     public static void SwapIdentity(MonitorProfile a, MonitorProfile b)
     {
         (a.Fingerprint, b.Fingerprint) = (b.Fingerprint, a.Fingerprint);
+        (a.OtherFingerprints, b.OtherFingerprints) = (b.OtherFingerprints, a.OtherFingerprints);
+    }
+
+    /// <summary>
+    /// Records that <paramref name="source"/> is another connection of the same physical screen as
+    /// <paramref name="target"/>: the target takes over its fingerprints and its links, and the
+    /// source profile is removed. The target keeps its name and settings.
+    /// </summary>
+    public static void Merge(AppConfig config, MonitorProfile source, MonitorProfile target)
+    {
+        if (ReferenceEquals(source, target)) return;
+
+        // the screen is connected the way the source saw it, so that becomes the target's main fingerprint
+        target.OtherFingerprints.Add(target.Fingerprint);
+        target.OtherFingerprints.AddRange(source.OtherFingerprints);
+        target.Fingerprint = source.Fingerprint;
+
+        // a link between the two would now lead from the screen to itself
+        config.Links.RemoveAll(l => l.A.MonitorId == source.Id && l.B.MonitorId == target.Id
+                                    || l.A.MonitorId == target.Id && l.B.MonitorId == source.Id);
+
+        foreach (var link in config.Links) {
+            foreach (var end in link.Ends) {
+                if (end.MonitorId == source.Id) end.MonitorId = target.Id;
+            }
+        }
+
+        config.Monitors.Remove(source);
     }
 
     private static string NextLabel(AppConfig config, MonitorFingerprint fingerprint)

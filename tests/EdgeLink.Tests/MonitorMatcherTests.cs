@@ -17,6 +17,40 @@ public class MonitorMatcherTests {
     private static List<DetectedMonitor> Detected(params MonitorFingerprint[] fingerprints) =>
         fingerprints.Select(f => new DetectedMonitor(f)).ToList();
 
+    private static MonitorFingerprint GlideX() => new() {
+        DevicePath = "glidex", FriendlyName = "GlideX(5524)", AdapterPath = "glidex-gpu", EdidManufacturer = 38940, EdidProduct = 1,
+        Serial = "892678708", X = -1935, Y = 1440, Width = 2360, Height = 1640
+    };
+
+    [Fact]
+    public void A_merged_screen_is_recognised_through_either_connection()
+    {
+        var config = new AppConfig();
+        var ipad = MonitorMatcher.Assign(config, Detected(GlideX()))[0].Profile;
+        ipad.Label = "iPad";
+        var other = new MonitorProfile();
+        config.Monitors.Add(other);
+        config.Links.Add(new Link { A = new LinkEnd { MonitorId = ipad.Id }, B = new LinkEnd { MonitorId = other.Id } });
+
+        // the same tablet through spacedesk: no EDID, so a new profile
+        var viaSpacedesk = MonitorMatcher.Assign(config, Detected(Tablet("uid261", 2360, 1640, -1931, 1440)))[0].Profile;
+        Assert.NotSame(ipad, viaSpacedesk);
+        config.Links.Add(new Link { A = new LinkEnd { MonitorId = viaSpacedesk.Id }, B = new LinkEnd { MonitorId = other.Id, Edge = Edge.Right } });
+        config.Links.Add(new Link { A = new LinkEnd { MonitorId = viaSpacedesk.Id }, B = new LinkEnd { MonitorId = ipad.Id } });
+
+        MonitorMatcher.Merge(config, viaSpacedesk, ipad);
+
+        Assert.DoesNotContain(viaSpacedesk, config.Monitors);
+        Assert.Equal(2, config.Links.Count); // the link between the two is gone, the other one moved
+        Assert.All(config.Links, l => Assert.Equal(ipad.Id, l.A.MonitorId));
+
+        Assert.Same(ipad, MonitorMatcher.Assign(config, Detected(Tablet("uid261", 2360, 1640, -1931, 1440)))[0].Profile);
+        Assert.Same(ipad, MonitorMatcher.Assign(config, Detected(GlideX()))[0].Profile);
+        Assert.Same(ipad, MonitorMatcher.Assign(config, Detected(Tablet("uid262", 2360, 1640, -1931, 1440)))[0].Profile);
+        Assert.Equal(2, config.Monitors.Count);
+        Assert.Single(ipad.OtherFingerprints);
+    }
+
     [Fact]
     public void New_monitors_get_profiles_and_are_recognised_next_time()
     {
